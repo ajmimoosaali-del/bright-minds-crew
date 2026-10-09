@@ -38,7 +38,8 @@ const TRANSLATIONS = {
     podiumTitle: "لوحة الشرف والأبطال",
     switchLanguage: "English",
     confirmDeleteTeacher: "هل أنت متأكد من حذف هذه المعلمة؟",
-    confirmDeleteTask: "هل أنت متأكد من حذف هذه المهمة؟"
+    confirmDeleteTask: "هل أنت متأكد من حذف هذه المهمة؟",
+    quickEval: "تقييم سريح"
   },
   en: {
     title: "Bright Minds Crew",
@@ -73,7 +74,8 @@ const TRANSLATIONS = {
     podiumTitle: "Leaderboard & Champions",
     switchLanguage: "العربية",
     confirmDeleteTeacher: "Are you sure you want to delete this teacher?",
-    confirmDeleteTask: "Are you sure you want to delete this task category?"
+    confirmDeleteTask: "Are you sure you want to delete this task category?",
+    quickEval: "Evaluate"
   }
 };
 
@@ -137,6 +139,15 @@ export default function App() {
     localStorage.setItem('bmc_evaluations', JSON.stringify(evaluations));
   }, [teachers, categories, evaluations]);
 
+  // فتح نافذة التقييم لمعلمة محددة مباشرة
+  const openEvalForTeacher = (teacherId) => {
+    setSelectedTeacher(teacherId);
+    if (categories.length > 0) {
+      setSelectedCategory(categories[0].id);
+    }
+    setShowEvalModal(true);
+  };
+
   // إضافة تقييم
   const handleAddEvaluation = (e) => {
     e.preventDefault();
@@ -169,7 +180,7 @@ export default function App() {
     setComment('');
   };
 
-  // إضافة معلمة بالاسم فقط
+  // إضافة معلمة
   const handleAddTeacher = (e) => {
     e.preventDefault();
     if (!newTeacherName) return;
@@ -254,7 +265,11 @@ export default function App() {
               </button>
 
               <button 
-                onClick={() => setShowEvalModal(true)}
+                onClick={() => {
+                  if (teachers.length > 0) setSelectedTeacher(teachers[0].id);
+                  if (categories.length > 0) setSelectedCategory(categories[0].id);
+                  setShowEvalModal(true);
+                }}
                 className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-[#E879A9] text-white font-medium hover:bg-[#C95388] shadow-md shadow-[#E879A9]/20 transition"
               >
                 <Star className="w-4 h-4 fill-white" />
@@ -390,7 +405,7 @@ export default function App() {
               </div>
             )}
 
-            {/* Team View with Delete Action */}
+            {/* Team View with Direct Evaluation Buttons */}
             {activeTab === 'team' && (
               <div className="bg-white p-6 rounded-3xl border border-[#F8C2D8] shadow-sm space-y-6">
                 <div className="flex justify-between items-center">
@@ -433,10 +448,17 @@ export default function App() {
                           <td className="p-4 font-bold text-amber-500">{teacher.weeklyStars} ★</td>
                           <td className="p-4 font-bold text-amber-500">{teacher.monthlyStars} ★</td>
                           <td className="p-4 font-bold text-amber-600">{teacher.stars} ★</td>
-                          <td className="p-4">
+                          <td className="p-4 flex items-center gap-2">
+                            <button 
+                              onClick={() => openEvalForTeacher(teacher.id)}
+                              className="flex items-center gap-1 px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100 rounded-xl text-xs font-bold transition"
+                            >
+                              <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
+                              {t.quickEval}
+                            </button>
                             <button 
                               onClick={() => handleDeleteTeacher(teacher.id)}
-                              className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition"
+                              className="p-1.5 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition"
                               title="حذف"
                             >
                               <Trash2 className="w-4 h-4" />
@@ -450,7 +472,7 @@ export default function App() {
               </div>
             )}
 
-            {/* Task Categories View with Add & Delete */}
+            {/* Task Categories View */}
             {activeTab === 'tasks' && (
               <div className="bg-white p-6 rounded-3xl border border-[#F8C2D8] shadow-sm space-y-4">
                 <div className="flex justify-between items-center mb-4">
@@ -632,7 +654,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Modal: Add New Teacher (Name Only) */}
+      {/* Modal: Add New Teacher */}
       {showTeacherModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 border border-[#F8C2D8] shadow-2xl space-y-4">
