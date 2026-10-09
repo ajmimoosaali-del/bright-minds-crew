@@ -1,11 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { 
-  Trophy, Star, Users, CheckSquare, BarChart2, FileText, 
-  Settings, Award, Plus, Trash2, Edit, ChevronLeft, ChevronRight, 
-  Globe, LogOut, CheckCircle, Shield, Search, Filter, Download
+  Trophy, Star, Users, CheckSquare, BarChart2, 
+  Plus, Trash2, Globe, Award
 } from 'lucide-react';
 
-// اللغات والمحتوى المترجم
 const TRANSLATIONS = {
   ar: {
     title: "طاقم العقول النيرة",
@@ -16,18 +14,17 @@ const TRANSLATIONS = {
     evaluations: "التقييمات",
     weeklyLeaders: "أبطال الأسبوع",
     monthlyLeaders: "أبطال الشهر",
-    reports: "التقارير",
-    settings: "الإعدادات",
     totalStars: "إجمالي النجوم",
     weeklyStars: "نجوم الأسبوع",
     monthlyStars: "نجوم الشهر",
     activeTeachers: "المعلمات النشطات",
     evaluationsCount: "عدد التقييمات",
     addTeacher: "إضافة معلمة",
-    addTask: "إضافة مهمة",
+    addTask: "إضافة فئة مهمة",
     evaluate: "تقييم جديد",
-    awardStars: "منح النجوم",
     teacherName: "اسم المعلمة",
+    taskNameAr: "اسم المهمة (بالعربية)",
+    taskNameEn: "اسم المهمة (بالإنجليزية)",
     category: "فئة المهمة",
     stars: "النجوم",
     notes: "ملاحظات",
@@ -38,10 +35,10 @@ const TRANSLATIONS = {
     member: "معلمة",
     save: "حفظ",
     cancel: "إلغاء",
-    exportData: "تصدير البيانات",
-    rank: "الترتيب",
     podiumTitle: "لوحة الشرف والأبطال",
-    switchLanguage: "English"
+    switchLanguage: "English",
+    confirmDeleteTeacher: "هل أنت متأكد من حذف هذه المعلمة؟",
+    confirmDeleteTask: "هل أنت متأكد من حذف هذه المهمة؟"
   },
   en: {
     title: "Bright Minds Crew",
@@ -52,8 +49,6 @@ const TRANSLATIONS = {
     evaluations: "Evaluations",
     weeklyLeaders: "Weekly Leaders",
     monthlyLeaders: "Monthly Leaders",
-    reports: "Reports",
-    settings: "Settings",
     totalStars: "Total Stars",
     weeklyStars: "Weekly Stars",
     monthlyStars: "Monthly Stars",
@@ -62,8 +57,9 @@ const TRANSLATIONS = {
     addTeacher: "Add Teacher",
     addTask: "Add Task Category",
     evaluate: "New Evaluation",
-    awardStars: "Award Stars",
     teacherName: "Teacher Name",
+    taskNameAr: "Task Name (Arabic)",
+    taskNameEn: "Task Name (English)",
     category: "Task Category",
     stars: "Stars",
     notes: "Notes",
@@ -74,19 +70,18 @@ const TRANSLATIONS = {
     member: "Teacher",
     save: "Save",
     cancel: "Cancel",
-    exportData: "Export Data",
-    rank: "Rank",
     podiumTitle: "Leaderboard & Champions",
-    switchLanguage: "العربية"
+    switchLanguage: "العربية",
+    confirmDeleteTeacher: "Are you sure you want to delete this teacher?",
+    confirmDeleteTask: "Are you sure you want to delete this task category?"
   }
 };
 
-// البيانات الأولية الافتراضية
 const INITIAL_TEACHERS = [
-  { id: '1', name: 'أمل الغافرية', email: 'amal@brightminds.com', role: 'admin', stars: 45, weeklyStars: 12, monthlyStars: 32, avatar: '👩‍🏫' },
-  { id: '2', name: 'سارة البلوشية', email: 'sara@brightminds.com', role: 'member', stars: 38, weeklyStars: 10, monthlyStars: 28, avatar: '👩‍🎓' },
-  { id: '3', name: 'مريم الزدجالية', email: 'maryam@brightminds.com', role: 'member', stars: 42, weeklyStars: 15, monthlyStars: 35, avatar: '👩‍🔬' },
-  { id: '4', name: 'فاطمة المعمرية', email: 'fatma@brightminds.com', role: 'member', stars: 29, weeklyStars: 8, monthlyStars: 22, avatar: '👩‍💻' }
+  { id: '1', name: 'أمل الغافرية', role: 'admin', stars: 45, weeklyStars: 12, monthlyStars: 32, avatar: '👩‍🏫' },
+  { id: '2', name: 'سارة البلوشية', role: 'member', stars: 38, weeklyStars: 10, monthlyStars: 28, avatar: '👩‍🎓' },
+  { id: '3', name: 'مريم الزدجالية', role: 'member', stars: 42, weeklyStars: 15, monthlyStars: 35, avatar: '👩‍🔬' },
+  { id: '4', name: 'فاطمة المعمرية', role: 'member', stars: 29, weeklyStars: 8, monthlyStars: 22, avatar: '👩‍💻' }
 ];
 
 const INITIAL_CATEGORIES = [
@@ -109,6 +104,7 @@ export default function App() {
   // Modals state
   const [showEvalModal, setShowEvalModal] = useState(false);
   const [showTeacherModal, setShowTeacherModal] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
   
   // Evaluation form state
   const [selectedTeacher, setSelectedTeacher] = useState('');
@@ -118,25 +114,30 @@ export default function App() {
 
   // New Teacher form state
   const [newTeacherName, setNewTeacherName] = useState('');
-  const [newTeacherEmail, setNewTeacherEmail] = useState('');
+
+  // New Task form state
+  const [newTaskAr, setNewTaskAr] = useState('');
+  const [newTaskEn, setNewTaskEn] = useState('');
 
   const t = TRANSLATIONS[lang];
   const isRtl = lang === 'ar';
 
-  // حفظ واسترجاع البيانات من LocalStorage
   useEffect(() => {
     const savedTeachers = localStorage.getItem('bmc_teachers');
+    const savedCategories = localStorage.getItem('bmc_categories');
     const savedEvaluations = localStorage.getItem('bmc_evaluations');
     if (savedTeachers) setTeachers(JSON.parse(savedTeachers));
+    if (savedCategories) setCategories(JSON.parse(savedCategories));
     if (savedEvaluations) setEvaluations(JSON.parse(savedEvaluations));
   }, []);
 
   useEffect(() => {
     localStorage.setItem('bmc_teachers', JSON.stringify(teachers));
+    localStorage.setItem('bmc_categories', JSON.stringify(categories));
     localStorage.setItem('bmc_evaluations', JSON.stringify(evaluations));
-  }, [teachers, evaluations]);
+  }, [teachers, categories, evaluations]);
 
-  // إضافة تقييم جديد
+  // إضافة تقييم
   const handleAddEvaluation = (e) => {
     e.preventDefault();
     if (!selectedTeacher || !selectedCategory) return;
@@ -152,7 +153,6 @@ export default function App() {
 
     setEvaluations([newEval, ...evaluations]);
 
-    // تحديث نجوم المعلمة
     setTeachers(teachers.map(teacher => {
       if (teacher.id === selectedTeacher) {
         return {
@@ -169,39 +169,69 @@ export default function App() {
     setComment('');
   };
 
-  // إضافة معلمة جديدة
+  // إضافة معلمة بالاسم فقط
   const handleAddTeacher = (e) => {
     e.preventDefault();
     if (!newTeacherName) return;
 
+    const avatars = ['👩‍🏫', '👩‍🎓', '👩‍🔬', '👩‍💻', '👩‍🎨', '👩‍🏫'];
+    const randomAvatar = avatars[Math.floor(Math.random() * avatars.length)];
+
     const teacher = {
       id: Date.now().toString(),
       name: newTeacherName,
-      email: newTeacherEmail || `${Date.now()}@brightminds.com`,
       role: 'member',
       stars: 0,
       weeklyStars: 0,
       monthlyStars: 0,
-      avatar: '👩‍🏫'
+      avatar: randomAvatar
     };
 
     setTeachers([...teachers, teacher]);
     setNewTeacherName('');
-    setNewTeacherEmail('');
     setShowTeacherModal(false);
   };
 
-  // ترتيب المعلمات
+  // حذف معلمة
+  const handleDeleteTeacher = (id) => {
+    if (window.confirm(t.confirmDeleteTeacher)) {
+      setTeachers(teachers.filter(t => t.id !== id));
+    }
+  };
+
+  // إضافة فئة مهمة
+  const handleAddTaskCategory = (e) => {
+    e.preventDefault();
+    if (!newTaskAr) return;
+
+    const newCategory = {
+      id: Date.now().toString(),
+      nameAr: newTaskAr,
+      nameEn: newTaskEn || newTaskAr
+    };
+
+    setCategories([...categories, newCategory]);
+    setNewTaskAr('');
+    setNewTaskEn('');
+    setShowTaskModal(false);
+  };
+
+  // حذف فئة مهمة
+  const handleDeleteTask = (id) => {
+    if (window.confirm(t.confirmDeleteTask)) {
+      setCategories(categories.filter(c => c.id !== id));
+    }
+  };
+
   const sortedByWeekly = [...teachers].sort((a, b) => b.weeklyStars - a.weeklyStars);
   const sortedByMonthly = [...teachers].sort((a, b) => b.monthlyStars - a.monthlyStars);
 
   return (
     <div className={`min-h-screen bg-[#FFF7FA] text-[#342536] ${isRtl ? 'rtl' : 'ltr'}`} dir={isRtl ? 'rtl' : 'ltr'}>
-      {/* Header / Navigation Bar */}
+      {/* Header */}
       <header className="bg-white/80 backdrop-blur-md border-b border-[#F8C2D8] sticky top-0 z-40 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-20">
-            {/* Logo */}
             <div className="flex items-center gap-3">
               <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-[#E879A9] to-[#F4A6C1] flex items-center justify-center text-white shadow-lg shadow-[#E879A9]/30">
                 <Trophy className="w-7 h-7" />
@@ -214,7 +244,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Top Right Controls */}
             <div className="flex items-center gap-3">
               <button 
                 onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
@@ -271,13 +300,12 @@ export default function App() {
             </nav>
           </div>
 
-          {/* Dynamic Content Area */}
+          {/* Dynamic Content */}
           <div className="lg:col-span-3 space-y-8">
 
             {/* Dashboard View */}
             {activeTab === 'dashboard' && (
               <div className="space-y-6">
-                {/* Key Metrics Grid */}
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div className="bg-white p-6 rounded-3xl border border-[#F8C2D8] shadow-sm flex items-center gap-4">
                     <div className="w-14 h-14 rounded-2xl bg-[#FFF7FA] border border-[#F8C2D8] flex items-center justify-center text-[#E879A9]">
@@ -312,7 +340,7 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Podium Highlights */}
+                {/* Podium */}
                 <div className="bg-gradient-to-br from-white to-[#FFF7FA] p-6 rounded-3xl border border-[#F8C2D8] shadow-sm">
                   <div className="flex justify-between items-center mb-6">
                     <h2 className="text-lg font-bold flex items-center gap-2">
@@ -322,7 +350,6 @@ export default function App() {
                   </div>
 
                   <div className="grid grid-cols-3 gap-4 items-end pt-8 pb-4">
-                    {/* Rank 2 */}
                     {sortedByWeekly[1] && (
                       <div className="flex flex-col items-center">
                         <span className="text-2xl mb-1">{sortedByWeekly[1].avatar}</span>
@@ -334,7 +361,6 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* Rank 1 */}
                     {sortedByWeekly[0] && (
                       <div className="flex flex-col items-center -mt-6">
                         <div className="relative">
@@ -349,7 +375,6 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* Rank 3 */}
                     {sortedByWeekly[2] && (
                       <div className="flex flex-col items-center">
                         <span className="text-2xl mb-1">{sortedByWeekly[2].avatar}</span>
@@ -365,7 +390,7 @@ export default function App() {
               </div>
             )}
 
-            {/* Team View */}
+            {/* Team View with Delete Action */}
             {activeTab === 'team' && (
               <div className="bg-white p-6 rounded-3xl border border-[#F8C2D8] shadow-sm space-y-6">
                 <div className="flex justify-between items-center">
@@ -388,6 +413,7 @@ export default function App() {
                         <th className="p-4">{t.weeklyStars}</th>
                         <th className="p-4">{t.monthlyStars}</th>
                         <th className="p-4">{t.totalStars}</th>
+                        <th className="p-4">{t.actions}</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100">
@@ -407,6 +433,15 @@ export default function App() {
                           <td className="p-4 font-bold text-amber-500">{teacher.weeklyStars} ★</td>
                           <td className="p-4 font-bold text-amber-500">{teacher.monthlyStars} ★</td>
                           <td className="p-4 font-bold text-amber-600">{teacher.stars} ★</td>
+                          <td className="p-4">
+                            <button 
+                              onClick={() => handleDeleteTeacher(teacher.id)}
+                              className="p-2 text-red-500 hover:bg-red-50 rounded-xl transition"
+                              title="حذف"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -415,20 +450,38 @@ export default function App() {
               </div>
             )}
 
-            {/* Task Categories View */}
+            {/* Task Categories View with Add & Delete */}
             {activeTab === 'tasks' && (
               <div className="bg-white p-6 rounded-3xl border border-[#F8C2D8] shadow-sm space-y-4">
-                <h2 className="text-lg font-bold mb-4">{t.tasks}</h2>
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-lg font-bold">{t.tasks}</h2>
+                  <button 
+                    onClick={() => setShowTaskModal(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-[#E879A9] text-white text-sm font-medium hover:bg-[#C95388] transition"
+                  >
+                    <Plus className="w-4 h-4" />
+                    {t.addTask}
+                  </button>
+                </div>
+
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {categories.map((cat, idx) => (
-                    <div key={cat.id} className="p-4 rounded-2xl bg-[#FFF7FA] border border-[#F8C2D8] flex items-center gap-3">
-                      <span className="w-8 h-8 rounded-xl bg-[#E879A9] text-white font-bold flex items-center justify-center text-xs">
-                        {idx + 1}
-                      </span>
-                      <div>
-                        <p className="font-bold text-gray-800">{cat.nameAr}</p>
-                        <p className="text-xs text-gray-500">{cat.nameEn}</p>
+                    <div key={cat.id} className="p-4 rounded-2xl bg-[#FFF7FA] border border-[#F8C2D8] flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="w-8 h-8 rounded-xl bg-[#E879A9] text-white font-bold flex items-center justify-center text-xs">
+                          {idx + 1}
+                        </span>
+                        <div>
+                          <p className="font-bold text-gray-800">{cat.nameAr}</p>
+                          <p className="text-xs text-gray-500">{cat.nameEn}</p>
+                        </div>
                       </div>
+                      <button 
+                        onClick={() => handleDeleteTask(cat.id)}
+                        className="p-2 text-red-400 hover:bg-red-50 hover:text-red-600 rounded-xl transition"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
                     </div>
                   ))}
                 </div>
@@ -465,7 +518,7 @@ export default function App() {
               </div>
             )}
 
-            {/* Weekly / Monthly Leaderboards View */}
+            {/* Leaderboards */}
             {(activeTab === 'weekly' || activeTab === 'monthly') && (
               <div className="bg-white p-6 rounded-3xl border border-[#F8C2D8] shadow-sm space-y-4">
                 <h2 className="text-lg font-bold">
@@ -481,10 +534,7 @@ export default function App() {
                           #{index + 1}
                         </span>
                         <span className="text-2xl">{teacher.avatar}</span>
-                        <div>
-                          <p className="font-bold text-sm">{teacher.name}</p>
-                          <p className="text-xs text-gray-400">{teacher.email}</p>
-                        </div>
+                        <p className="font-bold text-sm">{teacher.name}</p>
                       </div>
                       <div className="text-amber-500 font-extrabold text-lg">
                         {activeTab === 'weekly' ? teacher.weeklyStars : teacher.monthlyStars} ★
@@ -582,7 +632,7 @@ export default function App() {
         </div>
       )}
 
-      {/* Modal: Add New Teacher */}
+      {/* Modal: Add New Teacher (Name Only) */}
       {showTeacherModal && (
         <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-3xl max-w-md w-full p-6 border border-[#F8C2D8] shadow-2xl space-y-4">
@@ -600,14 +650,52 @@ export default function App() {
                 />
               </div>
 
+              <div className="flex gap-3 pt-2">
+                <button 
+                  type="submit" 
+                  className="flex-1 py-3 bg-[#E879A9] text-white font-bold rounded-xl hover:bg-[#C95388] transition"
+                >
+                  {t.save}
+                </button>
+                <button 
+                  type="button" 
+                  onClick={() => setShowTeacherModal(false)}
+                  className="px-4 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition"
+                >
+                  {t.cancel}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Modal: Add New Task Category */}
+      {showTaskModal && (
+        <div className="fixed inset-0 bg-black/40 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 border border-[#F8C2D8] shadow-2xl space-y-4">
+            <h3 className="text-lg font-bold text-center border-b pb-3">{t.addTask}</h3>
+            <form onSubmit={handleAddTaskCategory} className="space-y-4">
               <div>
-                <label className="block text-xs font-bold text-gray-600 mb-1">البريد الإلكتروني (اختياري)</label>
+                <label className="block text-xs font-bold text-gray-600 mb-1">{t.taskNameAr}</label>
                 <input 
-                  type="email" 
+                  type="text" 
                   className="w-full p-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#E879A9]"
-                  value={newTeacherEmail}
-                  onChange={e => setNewTeacherEmail(e.target.value)}
-                  placeholder="teacher@brightminds.com"
+                  value={newTaskAr}
+                  onChange={e => setNewTaskAr(e.target.value)}
+                  placeholder="مثال: ورش العمل الإبداعية"
+                  required
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-bold text-gray-600 mb-1">{t.taskNameEn}</label>
+                <input 
+                  type="text" 
+                  className="w-full p-3 rounded-xl border border-gray-200 text-sm focus:outline-none focus:border-[#E879A9]"
+                  value={newTaskEn}
+                  onChange={e => setNewTaskEn(e.target.value)}
+                  placeholder="e.g. Creative Workshops"
                 />
               </div>
 
@@ -620,7 +708,7 @@ export default function App() {
                 </button>
                 <button 
                   type="button" 
-                  onClick={() => setShowTeacherModal(false)}
+                  onClick={() => setShowTaskModal(false)}
                   className="px-4 py-3 bg-gray-100 text-gray-600 font-bold rounded-xl hover:bg-gray-200 transition"
                 >
                   {t.cancel}
